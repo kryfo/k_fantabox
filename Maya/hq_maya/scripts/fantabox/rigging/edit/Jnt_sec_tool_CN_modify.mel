@@ -1,0 +1,335 @@
+global proc Jnt_sec_tool_CN_modify(){
+
+if (`window -ex lin`)deleteUI "lin";
+window -t "Jnt_sec_tool" -s 0 "lin";
+columnLayout  -adj 0 column1;
+
+rowColumnLayout  -numberOfRows 4
+        -rowHeight 1 8
+        -rowHeight 2 25
+        -rowHeight 3 25
+        -rowHeight 3 25;
+        separator -height 5 -style "in"; 
+        text -l "###默认情况下，已选择父子约束和球形控制器###" -bgc 0.5 0.5 0.5 -w 350 -h 25 tex100;
+        text -l "#必须要先读取需要操作的模型,二次创建次级无权重#" -bgc 1 0 0 -w 350 -h 25 tex101;
+        separator -height 5 -style "in"; 
+
+setParent..;
+
+
+columnLayout -adj 1;
+checkBoxGrp  -ncb 2  -cw 1 80 -h 30 -label "约束类型:" -v2 true
+             -la2 "点约束" "父子约束" checkbox1;
+      
+radioButtonGrp -nrb 2 -l "控制器类型:"   -cw 1 80 -h 30 -sl 1
+             -la2  "球形" "正方形" radiobut1;         
+
+checkBoxGrp  -ncb 1  -cw 1 80 -h 30 -label "镜像选择:" -v1 true
+             -l1 "镜像(模型本身不对称，自然无法镜像生成)" checkbox2;
+             
+checkBoxGrp  -ncb 1  -cw 1 80 -h 30 -label "控制器缩放:" -v1 false
+             -l1 "自选缩放(适合任何控制器)" checkbox3;
+             
+checkBoxGrp  -ncb 1  -cw 1 80 -h 30 -label "关联缩放:" -v1 false
+             -l1 "手动关联缩放(需选择需要关联缩放的任何物体)" checkbox4;
+setParent..;
+
+rowLayout -numberOfColumns 3
+    -columnAlign  1 "right"
+    -columnAttach 1 "both"  0
+    -columnAttach 2 "both"  0
+    -columnAttach 3 "both"  0;
+text -l "读取基本模型：   " -w 120 -h 25 text07;
+textField -tx "" -editable false -w 130 -h 25 tex7;
+button -l "读取模型" -w 100 -h 25 -c "getbase" but7;
+setParent..;
+
+rowLayout -numberOfColumns 3
+    -columnAlign  1 "right"
+    -columnAttach 1 "both"  0
+    -columnAttach 2 "both"  0
+    -columnAttach 3 "both"  0;
+text -l "输入前缀名称：   " -w 120 -h 25 text01;
+textField -tx "bodyciji" -w 130 -h 25 tex1;
+button -l "创建毛囊" -w 100 -h 25 -c "foll" but1;
+setParent..;
+
+rowLayout -numberOfColumns 2
+    -columnAlign  1 "right"
+    -columnAttach 1 "both"  0
+    -columnAttach 2 "both"  0
+    -columnAttach 3 "both"  0;
+floatFieldGrp  -l "输入缩放值:     " -nf 1 -v1 0.5 gtfloat;
+button -l "     点击缩放控制器" -w 100 -h 25 -c "ScaleCon" but4;
+setParent..;
+
+rowLayout -numberOfColumns 3
+    -columnAlign  1 "right"
+    -columnAttach 1 "both"  0
+    -columnAttach 2 "both"  0
+    -columnAttach 3 "both"  0;
+text -l "输入总控或根骨骼名： " -w 120 -h 25 text08;
+textField -tx "Main" -w 130 -h 25 tex8;
+button -l "关联毛囊缩放" -w 100 -h 25 -c "FolliclScale" but8;
+setParent..;
+
+
+showWindow "lin";
+}
+Jnt_sec_tool_CN_modify;
+
+global proc getbase(){
+    if(`objExists ("*_show")` ){
+        string $selshow[]=`ls -sl`;
+        string $base=`substitute "_show" $selshow[0] ""`;
+        select $base;
+     }
+    string $selbase[]=`ls-sl`;
+    textField -e -tx $selbase[0] tex7;    
+}
+
+
+//创建follicle以及层级下的骨骼,控制器，添加二次位移
+global proc foll(){
+    string $follname=`textField -q -tx tex1`;
+    string $baseTemp=(`textField -q -tx tex7`+"_show");
+    string $allshows=stringArrayToString(`ls("*_show")`, " ");
+    int $matchEnd=(size(`match $baseTemp $allshows`));
+    string $basevtx;
+    if($matchEnd>0){
+        string $selvtxshow[]= `ls -sl -fl`;
+            for ($sels in $selvtxshow){
+                string $base=`substitute "_show" $sels ""`;
+                $basevtx+=$base+" ";
+                }
+         string $basevtxs[]=stringToStringArray($basevtx," ");
+         select $basevtxs;
+}
+
+
+    if(`checkBoxGrp -q -v1 checkbox2`){
+        string $selvtxbase[]= `ls -sl -fl`;
+        reflValuesSetSymmetryMode("MayaWindow|MainToolSettingsLayout|tabLayout1|selectTool", "object");
+        select -sym $selvtxbase;
+        symmetricModelling -e -symmetry 0 -topoSymmetry 0;
+    }
+
+ 
+    string $selvtx[]=`ls-sl-fl`;
+    
+    string $parent[] =` listRelatives -p $selvtx[0]`;
+    
+    int $num =1;
+
+    string $allFollGrp[];
+   
+    for($vtx in $selvtx)
+    
+    {
+      
+    select -r $vtx;  
+    ConvertSelectionToUVs;
+    float $uv[]=`polyEditUV -q`;
+    
+    createNode follicle -n ($follname+$num+"_FollicleShape");
+    setAttr ($follname+$num+"_FollicleShape.visibility") 0;
+    
+    connectAttr -f ($parent[0]+".outMesh") ($follname+$num+"_FollicleShape.inputMesh");
+    connectAttr -f ($parent[0]+".worldMatrix[0]") ($follname+$num+"_FollicleShape.inputWorldMatrix");
+    connectAttr -f ($follname+$num+"_FollicleShape.outTranslate") ($follname+$num+"_Follicle.translate");
+    connectAttr -f ($follname+$num+"_FollicleShape.outRotate") ($follname+$num+"_Follicle.rotate");
+
+    setAttr ($follname+$num+"_FollicleShape.parameterU") $uv[0];
+    setAttr ($follname+$num+"_FollicleShape.parameterV") $uv[1];
+    $allFollGrp[($num-1)]= ($follname+$num+"_Follicle");
+    select -cl ;
+          
+     $jntfullname = $follname+$num+"_Jnt";
+     select -d;
+    
+     joint -n $jntfullname -p 0 0 0 ;
+    
+     string $jointGrp = `group -n ($follname+$num+"_Grp") -p ($follname+$num+"_Follicle")`; 
+
+     $num++;  
+     
+    select -r $jntfullname;
+    setAttr ($jntfullname+".translateX") 0;
+    setAttr ($jntfullname+".translateY") 0;
+    setAttr ($jntfullname+".translateZ") 0;
+    setAttr ($jntfullname+".rotateX") 0;
+    setAttr ($jntfullname+".rotateY") 0;
+    setAttr ($jntfullname+".rotateZ") 0;
+    select -r $jointGrp;
+    xform -os -piv 0 0 0 ;
+    
+    $ctrl_num=$num-1;
+	string $ctrlName;
+	$rad =`radioButtonGrp -q -sl radiobut1`;
+	$ctrlName=$follname+$ctrl_num+"_ctrl";
+		if($rad==1)
+	     {                                  
+	       curve -d 1 -p 0 1 0 -p 0 0.92388 0.382683 -p 0 0.707107 0.707107 -p 0 0.382683 0.92388 
+	       -p 0 0 1 -p 0 -0.382683 0.92388 -p 0 -0.707107 0.707107 -p 0 -0.92388 0.382683 -p 0 -1 0 
+	       -p 0 -0.92388 -0.382683 -p 0 -0.707107 -0.707107 -p 0 -0.382683 -0.92388 -p 0 0 -1 -p 0 0.382683 -0.92388 
+	       -p 0 0.707107 -0.707107 -p 0 0.92388 -0.382683 -p 0 1 0 -p 0.382683 0.92388 0 -p 0.707107 0.707107 0 
+	       -p 0.92388 0.382683 0 -p 1 0 0 -p 0.92388 -0.382683 0 -p 0.707107 -0.707107 0 -p 0.382683 -0.92388 0 
+	       -p 0 -1 0 -p -0.382683 -0.92388 0 -p -0.707107 -0.707107 0 -p -0.92388 -0.382683 0 -p -1 0 0 
+	       -p -0.92388 0.382683 0 -p -0.707107 0.707107 0 -p -0.382683 0.92388 0 -p 0 1 0 -p 0 0.92388 -0.382683 
+	       -p 0 0.707107 -0.707107 -p 0 0.382683 -0.92388 -p 0 0 -1 -p -0.382683 0 -0.92388 -p -0.707107 0 -0.707107 
+	       -p -0.92388 0 -0.382683 -p -1 0 0 -p -0.92388 0 0.382683 -p -0.707107 0 0.707107 -p -0.382683 0 0.92388 
+	       -p 0 0 1 -p 0.382683 0 0.92388 -p 0.707107 0 0.707107 -p 0.92388 0 0.382683 -p 1 0 0 -p 0.92388 0 -0.382683 
+	       -p 0.707107 0 -0.707107 -p 0.382683 0 -0.92388 -p 0 0 -1 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 
+	       -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -k 16 -k 17 -k 18 -k 19 -k 20 -k 21 -k 22 -k 23 -k 24 -k 25 -k 26 -k 27 
+	       -k 28 -k 29 -k 30 -k 31 -k 32 -k 33 -k 34 -k 35 -k 36 -k 37 -k 38 -k 39 -k 40 -k 41 -k 42 -k 43 -k 44 -k 45 
+	       -k 46 -k 47 -k 48 -k 49 -k 50 -k 51 -k 52 ;
+	        makeIdentity -apply true -t 1 -r 1 -s 1 -n 0 ;
+	        DeleteHistory;
+	        rename $ctrlName;
+	        setAttr -lock true -keyable false -channelBox false ($ctrlName+".v");
+	        string $shape[]= `listRelatives -s $ctrlName`;
+	        setAttr ($shape[0]+".overrideEnabled") 1;
+	        setAttr ($shape[0]+".overrideColor") 20;
+	     }
+	  
+	  
+	     if($rad==2)
+	     {
+	      curve -d 1 -p -0.5 0.5 0.5 -p -0.5 0.5 -0.5 -p 0.5 0.5 -0.5 -p 0.5 0.5 0.5 -p -0.5 0.5 0.5 -p -0.5 -0.5 0.5 
+	      -p -0.5 -0.5 -0.5 -p -0.5 0.5 -0.5 -p 0.5 0.5 -0.5 -p 0.5 -0.5 -0.5 -p -0.5 -0.5 -0.5 -p -0.5 -0.5 0.5 
+	      -p 0.5 -0.5 0.5 -p 0.5 0.5 0.5 -p -0.5 0.5 0.5 -p -0.5 -0.5 0.5 -p 0.5 -0.5 0.5 -p 0.5 -0.5 -0.5 -p -0.5 -0.5 -0.5 
+	      -p -0.5 0.5 -0.5 -p 0.5 0.5 -0.5 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 
+	      -k 15 -k 16 -k 17 -k 18 -k 19 -k 20 ;
+	      makeIdentity -apply true -t 1 -r 1 -s 1 -n 0 ;
+	      DeleteHistory;
+	      rename $ctrlName;
+	      setAttr -lock true -keyable false -channelBox false ($ctrlName+".v");
+	      string $shape[]= `listRelatives -s $ctrlName`;
+	      setAttr ($shape[0]+".overrideEnabled") 1;
+	      setAttr ($shape[0]+".overrideColor") 20;
+	     }
+	                                                                                                                            
+   
+    $groupName= $ctrlName+"Grp";
+    group -n $groupName;
+    select -r $groupName;
+	
+    parentConstraint -weight 1 $jntfullname $groupName;
+    delete ($groupName+"_parentConstraint1");
+
+          if (`checkBoxGrp -q -v1 checkbox1`)
+           {
+             parentConstraint -w 1 -mo $ctrlName $jntfullname;
+           }    
+
+          if (`checkBoxGrp -q -v2 checkbox1`)
+           {
+            parentConstraint -w 1 -mo $ctrlName $jntfullname;
+           }        
+               
+    parent $groupName $allFollGrp; 
+  
+    }
+   select -cl;
+   select -r $allFollGrp;
+   group -n ($follname+"_FollicleGrp");
+   xform -ws -piv 0 0 0 ;
+
+   if(! `objExists ciji_Follicle_G`){
+       group -em -name ciji_Follicle_G;
+       parent ($follname+"_FollicleGrp") ciji_Follicle_G;
+   }else{
+       parent ($follname+"_FollicleGrp") ciji_Follicle_G;
+   }
+   select ciji_Follicle_G;
+   if(! `objExists showbase_jnt`){
+       joint -n showbase_jnt;
+   }
+
+   //string $splitt[];
+  // tokenize $selvtx[0] "." $splitt;
+   string $basename=`textField -q -tx tex7`;
+   if(! `objExists ($basename+"_show")` ){
+   duplicate -n ($basename+"_show") -rr $basename;
+   string $blendshape[]=`blendShape $basename ($basename+"_show")`;
+   setAttr ($basename+".v") 0;
+   setAttr ($blendshape[0]+"."+$basename) 1;
+   skinCluster `ls -type joint ($follname+"*")` showbase_jnt ($basename+"_show");
+   }else{
+       for ($jnts in `ls -type joint ($follname+"*")`){
+               skinCluster -e -ug -dr 4 -ps 0 -ns 10 -lw true -wt 0 -ai $jnts `findRelatedSkinCluster ($basename+"_show")`;}
+   }
+   
+
+
+//skinCluster1.matrix[0]//
+
+    string $showbase=(`textField -q -tx tex7`+"_show");
+    string $showshape[]=`pickWalk -d down $showbase`;
+    string $skins[]=`listConnections -d 0 -s 1 $showshape[0]`;
+    string $skinclust[]=`ls -type skinCluster($skins)`;
+    string $follname=`textField -q -tx tex1`;
+   
+    int $ii;
+    string $sel[] = `ls -type joint($follname+"*")`;
+
+    for($bb in $sel)
+       {
+           string $jointTemp[] = `listConnections -p 1 $bb`;
+           int $matrixNum=-1;
+           for($xx in $jointTemp)
+{
+    $xx = `match ".matrix\[[0-9]+\]" $xx`;
+    if(size($xx))
+    {
+        $xx = `match "[0-9]+" $xx`;
+        $matrixNum=int($xx);
+    }
+}
+   print ($matrixNum+"\n");
+   connectAttr -f ($sel[$ii]+".parentInverseMatrix") ($skinclust[0]+".bindPreMatrix["+$matrixNum+"]");
+   $ii++;
+}
+}
+
+////缩放控制器
+global proc ScaleCon(){
+    string $selcon[];
+    string $follname=`textField -q -tx tex1`;
+    float $min1 =`floatFieldGrp  -q -v1 gtfloat`;
+    if(!`checkBoxGrp -q -v1 checkbox3`){
+        string $selcon[]=`ls ($follname+"*_ctrl")`;
+    for ($sels in $selcon){
+        float $pt[]=`xform -q -ws -t $sels`;
+        select ($sels+".cv[0:999]");
+        scale -r -p $pt[0] $pt[1] $pt[2] $min1 $min1 $min1 ;
+        select -cl  ;
+    }
+    }else{
+        string $selcon[]=`ls-sl`;
+    for ($sels in $selcon){
+        float $pt[]=`xform -q -ws -t $sels`;
+        select ($sels+".cv[0:999]");
+        scale -r -p $pt[0] $pt[1] $pt[2] $min1 $min1 $min1 ;
+        select -cl  ;
+    }
+    }
+
+}
+////关联毛囊缩放
+global proc FolliclScale(){
+    string $follz[];
+    string $follname=`textField -q -tx tex1`;
+    string $Root=`textField -q -tx tex8`;
+    if(!`checkBoxGrp -q -v1 checkbox4`){
+        string $follz[]=`ls ($follname+"*_Follicle")`;
+    for ($sels in $follz){
+        scaleConstraint -mo $Root $sels;
+    }}else{
+        string $follz[]=`ls-sl`;
+    for ($sels in $follz){
+        scaleConstraint -mo $Root $sels;
+    }
+    }
+
+}

@@ -1,0 +1,1 @@
+execfile("//10.99.1.13/hq_tool/Maya/hq_maya/scripts/initialmaya.py")

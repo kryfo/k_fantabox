@@ -1,0 +1,91 @@
+global proc exptblendshape(){
+//////////////
+///基础模型
+string $selbase[]=`ls-sl`;////选择基础模型，执行所有
+string $base=$selbase[0];
+////融合变形节点
+string $blendshape="AU_ALL_BASE";///手动输入融合变形节点的名字
+group -em -n facebase_G;///创建组
+channelBoxCommand -break;
+setAttr -lock false ($base+".tx");///解锁基础模型的位移
+setAttr Mouth_C_001_CTRL.tx 1;///设置控制器的值
+duplicate -n BS_mouth_L -rr $base;///复制变形后的基础模型，并重命名
+setAttr Mouth_C_001_CTRL.tx -1;///设置控制器的值
+duplicate -n BS_mouth_R -rr $base;///复制变形后的基础模型，并重命名
+setAttr Mouth_C_001_CTRL.tx 0;///设置控制器的值为零
+setAttr Mouth_C_001_CTRL.ty 1;///设置控制器的值
+duplicate -n BS_mouth_U -rr $base;///复制变形后的基础模型，并重命名
+setAttr Mouth_C_001_CTRL.ty -1;///设置控制器的值
+duplicate -n BS_mouth_D -rr $base;///复制变形后的基础模型，并重命名
+setAttr Mouth_C_001_CTRL.ty 0;///设置控制器的值为零
+setAttr Mouth_C_001_CTRL.tz 1;///设置控制器的值
+duplicate -n BS_mouth_Out -rr $base;///复制变形后的基础模型，并重命名
+setAttr Mouth_C_001_CTRL.tz -1;///设置控制器的值
+duplicate -n BS_mouth_In -rr $base;///复制变形后的基础模型，并重命名
+setAttr Mouth_C_001_CTRL.tz 0;///设置控制器的值为零
+setAttr EyeCorner_L_001_CTRL.tx -1;///设置控制器的值
+duplicate -n BS_AU6_L -rr $base;///复制变形后的基础模型，并重命名
+setAttr EyeCorner_L_001_CTRL.tx 0;///设置控制器的值为零
+setAttr EyeCorner_R_001_CTRL.tx -1;///设置控制器的值
+duplicate -n BS_AU6_R -rr $base;///复制变形后的基础模型，并重命名
+setAttr EyeCorner_R_001_CTRL.tx 0;///设置控制器的值为零
+setAttr LowerLid_L_001_CTRL.ty 1;///设置控制器的值
+duplicate -n BS_AU7_L -rr $base;///复制变形后的基础模型，并重命名
+setAttr LowerLid_L_001_CTRL.ty 0;///设置控制器的值为零
+setAttr LowerLid_R_001_CTRL.ty 1;///设置控制器的值
+duplicate -n BS_AU7_R -rr $base;///复制变形后的基础模型，并重命名
+setAttr LowerLid_R_001_CTRL.ty 0;///设置控制器的值为零
+setAttr UpperLip_C_001_CTRL.ty 1;///设置控制器的值
+duplicate -n BS_AU17_U -rr $base;
+setAttr UpperLip_C_001_CTRL.ty 0;
+setAttr LowerLip_C_001_CTRL.ty 1;///设置控制器的值
+duplicate -n BS_AU17_D -rr $base;
+setAttr LowerLip_C_001_CTRL.ty 0;
+setAttr "UpperLid_L_001_CTRL.translateY" -1;///设置控制器的值
+duplicate -n BS_blinkFix_L -rr $base;///复制变形后的基础模型，并重命名
+setAttr "UpperLid_L_001_CTRL.translateY" 0;///设置控制器的值为零
+setAttr "UpperLid_R_001_CTRL.translateY" -1;
+duplicate -n BS_blinkFix_R -rr $base;
+setAttr "UpperLid_R_001_CTRL.translateY" 0;
+parent BS_blinkFix_L BS_blinkFix_R BS_mouth_L BS_mouth_R BS_mouth_U BS_mouth_D BS_mouth_Out BS_AU6_L BS_AU6_R BS_AU7_L BS_AU7_R BS_AU17_U BS_AU17_D 
+BS_mouth_In facebase_G;///移动到创建的组
+setAttr BS_AU6_L.tx 50;
+setAttr BS_AU6_R.tx 51;
+setAttr BS_AU7_L.tx 52;
+setAttr BS_AU7_R.tx 53;
+setAttr BS_AU17_U.tx 54;
+setAttr BS_AU17_D.tx 55;
+setAttr BS_blinkFix_L.tx 56;///设置复制后的模型的位移
+setAttr BS_blinkFix_R.tx 57;
+setAttr BS_mouth_L.tx 58;
+setAttr BS_mouth_R.tx 59;
+setAttr BS_mouth_U.tx 60;
+setAttr BS_mouth_D.tx 61;
+setAttr BS_mouth_Out.tx 62;
+setAttr BS_mouth_In.tx 63;
+
+string $selbs[]=`listAttr -m ($blendshape+".w")`;
+for ($selbss in $selbs){
+    CBdeleteConnection ($blendshape+"."+$selbss);
+    setAttr ($blendshape+"."+$selbss) 0;
+}///设置bs节点的初始值为0
+$selbs={"AU1_L","AU1_R","AU2_L","AU2_R","AU4_L","AU4_R","AU5_L","AU5_R","AU9_L","AU9_R","AU10_L","AU10_R","AU11_L","AU11_R","AU12_L","AU12_R","AU13_L","AU13_R","AU14_L","AU14_R","AU15_L","AU15_R","AU16_L","AU16_R","AU18_L","AU18_R","AU20_L","AU20_R","AU22_U","AU22_D","AU23_U","AU23_D","PUFF_L","PUFF_R","SHRINK_L","SHRINK_R","AU12OPEN_L","AU12OPEN_R","AU10OPEN_L","AU10OPEN_R","U","SH","E","F","M","O","AU28_U","AU28_D","AU24"}; 
+
+for ($i=0;$i<size($selbs);$i++){
+    setAttr ($blendshape+"."+$selbs[$i]) 1;///设置单个通道的值为1
+    duplicate -n ("BS_"+$selbs[$i]) -rr $base;///复制变形后的基础模型，并重命名
+    setAttr ("BS_"+$selbs[$i]+".tx") ($i+1);///设置复制后的模型的位移
+    parent ("BS_"+$selbs[$i]) facebase_G;///移到所创建的组
+    setAttr ($blendshape+"."+$selbs[$i]) 0;////设置通道属性值为初始状态
+}
+
+rename BS_AU10OPEN_L BS_AU10O_L;///处理有问题的命名
+rename BS_AU10OPEN_R BS_AU10O_R;
+rename BS_AU12OPEN_L BS_AU12O_L;
+rename BS_AU12OPEN_R BS_AU12O_R;
+delete `ls ("BS*Orig")` `ls("pgYeti*")` `listConnections -d 0 -s 1 BS_AU1_LShape`;
+select `listRelatives -c facebase_G`;
+sets -e -forceElement initialShadingGroup;}
+
+///////////////
+exptblendshape;

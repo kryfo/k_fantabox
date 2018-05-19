@@ -1,0 +1,15 @@
+INSTALLATION
+Copy the rjAnchorTransform folder to your Maya scripts directory:
+C:\Users\\Documents\maya\scripts
+
+USAGE
+Command line:
+import rjAnchorTransform
+rjAnchorTransform.anchorTransform(transform, start, end)
+
+Display UI:
+import rjAnchorTransform.ui
+rjAnchorTransform.ui.show()
+
+NOTE
+Anchor a transform to world space for a specific time range. Can be used to fix sliding feet on a walk cycle. The script uses the Maya API to calculate local transforms to be key framed, by doing this there is no need to loop over the animation greatly speeding up the work flow. Existing in and out tangents will be copied when new key frames are inserted.
